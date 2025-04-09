@@ -1,0 +1,5 @@
+qdrant-client
+transformers 
+torch 
+numpy
+pillow
