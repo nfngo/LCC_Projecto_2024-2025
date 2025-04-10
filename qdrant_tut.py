@@ -7,6 +7,7 @@ import torch
 import os
 
 import qdrant.utils as qd
+import models.models as mdl
 
 # Using containers
 # client = QdrantClient(host="qdrant", port=6333)
@@ -18,14 +19,7 @@ collection = "image_collection"
 
 # facebook/dino-vits16 size: 384
 # Vit Base Patch16 224 In21k size: 768
-qd.create_collection(client, collection, 768, models.Distance.DOT)
-
-# Create collection
-# if not client.collection_exists(collection_name=collection):
-#     client.create_collection(
-#         collection_name=collection,
-#         vectors_config=models.VectorParams(size=768, distance=models.Distance.DOT)
-#     )
+qd.create_collection(client, collection, 768, models.Distance.COSINE)
 
 image_names = []
 image_files = []
@@ -35,80 +29,56 @@ extensions = (".jpg", ".jpeg")
 
 # Save name and img obj from every image in {path}
 def get_images_info(path):
-    image_names = []
-    image_files = []
+    img_names = []
+    img_files = []
 
     for file in os.listdir(f"{path}"):
         if file.endswith(extensions):
-            image_names.append(file.split(".")[0])
-            image_files.append(Image.open(os.path.join(f"{path}",file)))    
+            img_names.append(file.split(".")[0])
+            img_files.append(Image.open(os.path.join(f"{path}",file)))    
     
-    return image_names, image_files
+    return img_names, img_files
 
 image_names, image_files = get_images_info(f"{current_directory}/assets")
 
-
-
-thumbnails_path = "thumbnails"
 # Create directory if needed
-if not os.path.exists(thumbnails_path):
-    os.makedirs(thumbnails_path)
+faces_path = "faces"
+if not os.path.exists(faces_path):
+    os.makedirs(faces_path)
  
+device, processor, model, detector = mdl.init_models()
+
 # Resize images (performance) and save them in thumbnails directory
-size = 224, 224
+# size = 224, 224
+# for i, image in enumerate(image_files):
+#     image.thumbnail(size)
+#     image.save(f"{current_directory}/{thumbnails_path}/{image_names[i]}_thumbnail.jpeg")
+
 for i, image in enumerate(image_files):
-    image.thumbnail(size)
-    image.save(f"{current_directory}/{thumbnails_path}/{image_names[i]}_thumbnail.jpeg")
+    destiny_path = f"{current_directory}/{faces_path}/"
+    mdl.process_image(image,
+                      detector,
+                      destiny_path,
+                      image_names[i])
 
-# Load ViT model
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-# Model: facebook/dino-vits16
-# processor = ViTImageProcessor.from_pretrained('facebook/dino-vits16')
-# model = ViTModel.from_pretrained('facebook/dino-vits16').to(device)
-
-# Model: Vit Base Patch16 224 In21k
-processor = ViTImageProcessor.from_pretrained('google/vit-base-patch16-224-in21k')
-model = ViTModel.from_pretrained('google/vit-base-patch16-224-in21k')
-
-# Get thumbnails information
-thumb_names, thumb_files = get_images_info(f"{current_directory}/{thumbnails_path}")
+# Get faces information
+faces_names, faces_files = get_images_info(f"{current_directory}/{faces_path}")
 
 # Generate embeddings
-def get_embeddings(files):
-    embeddings = []
-    for img in files:
-        inputs = processor(images=img, return_tensors="pt").to(device)
-        with torch.no_grad():
-            outputs = model(**inputs).last_hidden_state.mean(dim=1).cpu().numpy()
-        embeddings.append(outputs)
-    return embeddings
-
-gen_embeddings = get_embeddings(thumb_files)
-embeddings = np.array(gen_embeddings)
-print(embeddings)
+embeddings = mdl.gen_embeddings(faces_files, processor, device, model)
+# print(embeddings)
 
 # Save embeddings to DB
-for i in range(0, len(image_files)):
-    client.upsert(
-        collection_name = collection,
-        points = [models.PointStruct(
-            id = i,
-            payload = {
-                "name": image_names[i]
-            },
-            vector = embeddings[i][0],
-        )]
-    )
+for i in range(0, len(faces_files)):
+    qd.insert_image_embedding(client, collection, i, image_names, embeddings)
 
+img_to_search = mdl.gen_embedding_img_to_search(f"{current_directory}/Marcelo_Rebelo_de_Sousa_5.jpg", processor, device, model, detector)
+# print(img_to_search)
 
-img = Image.open(f"{current_directory}/Marcelo_Montenegro.jpg")
-inputs = processor(images=img, return_tensors="pt").to(device)
-img_to_search = model(**inputs).last_hidden_state.mean(dim=1)[0].tolist()
-
+# Search top 5 similar results
 nearest = client.query_points(
     collection_name=collection,
-    query=img_to_search,
+    query=img_to_search[0],
     limit=5,
     with_payload=True
 )
