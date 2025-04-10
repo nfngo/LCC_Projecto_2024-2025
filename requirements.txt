@@ -1,5 +1,7 @@
 qdrant-client
 transformers 
-torch 
 numpy
+torch
 pillow
+mtcnn
+tensorflow-cpu
