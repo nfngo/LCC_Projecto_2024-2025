@@ -1,9 +1,6 @@
-from transformers import ViTImageProcessor, ViTModel
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 from PIL import Image
-import numpy as np
-import torch
 import os
 
 import qdrant.utils as qd
@@ -35,25 +32,21 @@ def get_images_info(path):
     for file in os.listdir(f"{path}"):
         if file.endswith(extensions):
             img_names.append(file.split(".")[0])
-            img_files.append(Image.open(os.path.join(f"{path}",file)))    
+            img_files.append(Image.open(os.path.join(f"{path}",file)))   
     
     return img_names, img_files
 
 image_names, image_files = get_images_info(f"{current_directory}/assets")
 
+# Initialize models 
+device, processor, model, detector = mdl.init_models()
+
 # Create directory if needed
 faces_path = "faces"
 if not os.path.exists(faces_path):
     os.makedirs(faces_path)
- 
-device, processor, model, detector = mdl.init_models()
 
-# Resize images (performance) and save them in thumbnails directory
-# size = 224, 224
-# for i, image in enumerate(image_files):
-#     image.thumbnail(size)
-#     image.save(f"{current_directory}/{thumbnails_path}/{image_names[i]}_thumbnail.jpeg")
-
+# Save faces as images in faces folder
 for i, image in enumerate(image_files):
     destiny_path = f"{current_directory}/{faces_path}/"
     mdl.process_image(image,
@@ -70,36 +63,4 @@ embeddings = mdl.gen_embeddings(faces_files, processor, device, model)
 
 # Save embeddings to DB
 for i in range(0, len(faces_files)):
-    qd.insert_image_embedding(client, collection, i, image_names, embeddings)
-
-img_to_search = mdl.gen_embedding_img_to_search(f"{current_directory}/Marcelo_Rebelo_de_Sousa_5.jpg", processor, device, model, detector)
-# print(img_to_search)
-
-# Search top 5 similar results
-nearest = client.query_points(
-    collection_name=collection,
-    query=img_to_search[0],
-    limit=5,
-    with_payload=True
-)
-
-# print(nearest)
-
-import subprocess
-def see_images(results, top_k=2):
-    for i, result in enumerate(results):
-        # image_id = results[i]['id']
-        # name    = results[i].payload['name']
-        # score = results[i].score
-        # image = Image.open(image_files[image_id])
-        test = result[1]
-        for i in range(len(test)):
-            # print(f"{i}: {test[i]}")
-            name = test[i].payload['name']
-            score = test[i].score
-            print(f"Result #{i+1}: {name} was diagnosed with {score * 100} confidence")
-            print(f"This image score was {score}")
-            print("-" * 50)
-            print()
-
-see_images(nearest, top_k=2)
+    qd.insert_image_embedding(client, collection, i, faces_names, embeddings)
