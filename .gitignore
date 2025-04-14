@@ -5,3 +5,4 @@ faces
 qdrant_storage
 
 qdrant/__pycache__
+models/__pycache__
