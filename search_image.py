@@ -16,18 +16,20 @@ current_directory = os.getcwd()
 
 device, processor, model, detector = mdl.init_models()
 
-img_to_search = mdl.gen_embedding_img_to_search(f"{current_directory}/Antonio_Marcelo.jpg", processor, device, model, detector)
+img_to_search = mdl.gen_embedding_img_to_search(f"{current_directory}/Cândido_Costa_1.jpg", processor, device, model, detector)
 
-# Search top 5 similar results
+# Search top X similar results
+top = 3
 nearest_results = []
 for img in img_to_search:
-    nearest = qd.get_top_x_similar_images(client, collection, 3, img)
+    nearest = qd.get_top_x_similar_images(client, collection, top, img)
     nearest_results.append(nearest)
 
 # print(nearest_results)
 
 def print_results(results):
-    print(f"{len(results)} faces were found in the provided image")
+    msg = f"{len(results)} faces were found in the provided image" if len(results) > 1 else print(f"{len(results)} face was found in the provided image")
+    print(msg)
     for j, result in enumerate(results):
         # print(f"{j}: {result.points}")
         points = result.points

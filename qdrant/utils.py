@@ -23,14 +23,15 @@ def insert_image_embedding(client: QdrantClient,
                            img_names: list[str],
                            img_embeddings: np.ndarray
                            ):
-    file_name = img_names[img_id].split(".")[0].lower().replace("_"," ")
+    file_name = img_names[img_id].lower().replace("_"," ")
     name = "".join(c for c in file_name if c.isalpha() or c == ' ')
     client.upsert(
         collection_name = collection_name,
         points = [models.PointStruct(
             id = img_id,
             payload = {
-                "name": name
+                "name": name,
+                "image_url": f"{img_names[img_id]}.jpg"
             },
             vector = img_embeddings[img_id][0],
         )]
