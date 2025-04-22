@@ -1,12 +1,13 @@
 from qdrant_client import QdrantClient
 from qdrant_client.http import models
 import numpy as np
+import uuid
 
 # Create collection
 def create_collection(client: QdrantClient, 
                       collection_name: str, 
                       vector_size: int,
-                      distance_measure: models.Distance = models.Distance.DOT):
+                      distance_measure: models.Distance = models.Distance.COSINE):
     if not client.collection_exists(collection_name=collection_name):
         client.create_collection(
             collection_name = collection_name,
@@ -16,29 +17,31 @@ def create_collection(client: QdrantClient,
         )
 
 
-# Insert/update image embedding in the specified qdrant collection
+# Insert image embedding
 def insert_image_embedding(client: QdrantClient, 
                            collection_name: str, 
-                           img_id: int, 
-                           img_names: list[str],
-                           img_embeddings: np.ndarray
+                           img_data: dict
                            ):
-    file_name = img_names[img_id].lower().replace("_"," ")
-    name = "".join(c for c in file_name if c.isalpha() or c == ' ')
-    client.upsert(
+    
+    operation_info = client.upsert(
         collection_name = collection_name,
         points = [models.PointStruct(
-            id = img_id,
+            id = str(uuid.uuid4()),
             payload = {
-                "name": name,
-                "image_url": f"{img_names[img_id]}.jpg"
+                "name": img_data['name'],
+                "file_name": img_data['file_name']
             },
-            vector = img_embeddings[img_id][0],
+            vector = img_data['img_embedding'],
         )]
     )
 
+    if operation_info.status == models.UpdateStatus.COMPLETED:
+        print("Data inserted successfully")
+    else:
+        print("Failed to insert data")
 
-# Retrives x most similar images to query embedding
+
+# Retrieves {limit} most similar images to query embedding
 def get_top_x_similar_images(client: QdrantClient, 
                            collection_name: str,
                            limit: int,
@@ -49,3 +52,33 @@ def get_top_x_similar_images(client: QdrantClient,
         limit = limit,
         with_payload = True
         )
+
+
+# Get {limit} stored points 
+def get_points_from_collection(client: QdrantClient, 
+                           collection_name: str,
+                           limit: int,
+                           with_vectors: bool = False):
+    return client.scroll(
+        collection_name = collection_name,
+        limit = limit,
+        with_payload = True,
+        with_vectors = with_vectors
+    )
+
+
+# Deletes specified points (by id) from the collection.
+def delete_points_from_collection(client: QdrantClient, 
+                           collection_name: str,
+                           ids: list):
+    operation_info = client.delete(
+        collection_name = collection_name,
+        points_selector = models.PointIdsList(
+            points = ids
+        )
+    )
+    
+    if operation_info.status == models.UpdateStatus.COMPLETED:
+        print("Points deleted successfully")
+    else:
+        print("Failed to delete points")
