@@ -16,27 +16,31 @@ collection = "image_collection"
 
 # facebook/dino-vits16 size: 384
 # Vit Base Patch16 224 In21k size: 768
+# Create qdrant collection
 qd.create_collection(client, collection, 768, models.Distance.COSINE)
 
-image_names = []
-image_files = []
+data = []
 
 current_directory = os.getcwd()
 extensions = (".jpg", ".jpeg")
 
-# Save name and img obj from every image in {path}
-def get_images_info(path):
-    img_names = []
-    img_files = []
-
+def get_images_data(path):
+    data = []
     for file in os.listdir(f"{path}"):
         if file.endswith(extensions):
-            img_names.append(file.split(".")[0])
-            img_files.append(Image.open(os.path.join(f"{path}",file)))   
+            file_name = file.split(".")[0].lower().replace("_"," ")
+            name = "".join(c for c in file_name if c.isalpha() or c == ' ')[:-1] 
+            img_data = {
+                "name": name,
+                "file_name": file,
+                "img_obj": Image.open(os.path.join(f"{path}",file))
+            }
+            data.append(img_data)
     
-    return img_names, img_files
+    return data
 
-image_names, image_files = get_images_info(f"{current_directory}/assets")
+
+data = get_images_data(f"{current_directory}/assets")
 
 # Initialize models 
 device, processor, model, detector = mdl.init_models()
@@ -46,21 +50,19 @@ faces_path = "faces"
 if not os.path.exists(faces_path):
     os.makedirs(faces_path)
 
-# Save faces as images in faces folder
-for i, image in enumerate(image_files):
-    destiny_path = f"{current_directory}/{faces_path}/"
-    mdl.process_image(image,
+destiny_path = f"{current_directory}/{faces_path}/"
+for i, image_data in enumerate(data):
+    mdl.process_image(image_data['img_obj'],
                       detector,
                       destiny_path,
-                      image_names[i])
+                      image_data['file_name'])
 
-# Get faces information
-faces_names, faces_files = get_images_info(f"{current_directory}/{faces_path}")
+faces_data = get_images_data(f"{current_directory}/{faces_path}")
 
 # Generate embeddings
-embeddings = mdl.gen_embeddings(faces_files, processor, device, model)
+embeddings = mdl.gen_embeddings(faces_data, processor, device, model)
 # print(embeddings)
 
 # Save embeddings to DB
-for i in range(0, len(faces_files)):
-    qd.insert_image_embedding(client, collection, i, faces_names, embeddings)
+for img_data in embeddings:
+    qd.insert_image_embedding(client, collection, img_data)

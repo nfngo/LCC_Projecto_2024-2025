@@ -16,7 +16,7 @@ current_directory = os.getcwd()
 
 device, processor, model, detector = mdl.init_models()
 
-img_to_search = mdl.gen_embedding_img_to_search(f"{current_directory}/Cândido_Costa_1.jpg", processor, device, model, detector)
+img_to_search, searched_faces = mdl.gen_embedding_img_to_search(f"{current_directory}/Marcelo_Montenegro.jpg", processor, device, model, detector)
 
 # Search top X similar results
 top = 3
@@ -28,17 +28,19 @@ for img in img_to_search:
 # print(nearest_results)
 
 def print_results(results):
-    msg = f"{len(results)} faces were found in the provided image" if len(results) > 1 else print(f"{len(results)} face was found in the provided image")
+    msg = f"{len(results)} faces were found in the provided image" if len(results) > 1 else f"{len(results)} face was found in the provided image"
     print(msg)
     for j, result in enumerate(results):
         # print(f"{j}: {result.points}")
         points = result.points
         print(f"Face {j+1}:")
+        # searched_faces[j].show()
         for i in range(len(points)):
             name = points[i].payload['name']
             score = points[i].score
             print(f"Result #{i+1}: {name} was diagnosed with {score * 100} confidence")
             print(f"This image score was {score}")
+            # Image.open(f"faces/{points[i].payload['image_url']}").show()
             print("-" * 50)
             print()
 
