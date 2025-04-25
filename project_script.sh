@@ -11,4 +11,7 @@ case ${option} in
         rm -rf faces
         rm -rf qdrant_storage
     ;;
+    "start_app")
+        python3 initial_setup.py && streamlit run search_image.py
+    ;;
 esac
