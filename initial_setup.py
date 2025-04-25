@@ -14,7 +14,7 @@ client = QdrantClient(host="localhost", port=6333)
 
 collection = "image_collection"
 
-# facebook/dino-vits16 size: 384
+# facebook/dino-vitb16 size: 768
 # Vit Base Patch16 224 In21k size: 768
 # Create qdrant collection
 qd.create_collection(client, collection, 768, models.Distance.COSINE)
@@ -52,7 +52,7 @@ if not os.path.exists(faces_path):
 
 destiny_path = f"{current_directory}/{faces_path}/"
 for i, image_data in enumerate(data):
-    mdl.process_image(image_data['img_obj'],
+    mdl.process_image(image_data['img_obj'], 
                       detector,
                       destiny_path,
                       image_data['file_name'])
@@ -61,7 +61,6 @@ faces_data = get_images_data(f"{current_directory}/{faces_path}")
 
 # Generate embeddings
 embeddings = mdl.gen_embeddings(faces_data, processor, device, model)
-# print(embeddings)
 
 # Save embeddings to DB
 for img_data in embeddings:
