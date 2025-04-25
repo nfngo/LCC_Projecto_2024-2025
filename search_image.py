@@ -1,5 +1,6 @@
 from qdrant_client import QdrantClient
 import os
+import streamlit as st
 
 import qdrant.utils as qd
 import models.models as mdl
@@ -14,34 +15,48 @@ collection = "image_collection"
 
 current_directory = os.getcwd()
 
+# Initialize models
 device, processor, model, detector = mdl.init_models()
 
-img_to_search, searched_faces = mdl.gen_embedding_img_to_search(f"{current_directory}/Marcelo_Montenegro.jpg", processor, device, model, detector)
+st.title("Facial Recognition System")
+st.markdown("Upload images with different faces and you'll get the most similar ones from our database.")
+
+uploaded_file = st.file_uploader(label = "Upload some image",
+                                 type=["jpg", "jpeg"])
 
 # Search top X similar results
-top = 3
-nearest_results = []
-for img in img_to_search:
-    nearest = qd.get_top_x_similar_images(client, collection, top, img)
-    nearest_results.append(nearest)
+top = st.radio(
+    "How many search results do you want?",
+    [1, 3, 5],
+)
 
-# print(nearest_results)
+with st.spinner("Waiting for results..."):
+    if uploaded_file:
+        img_to_search, searched_faces = mdl.gen_embedding_img_to_search(uploaded_file, processor, device, model, detector)
 
-def print_results(results):
-    msg = f"{len(results)} faces were found in the provided image" if len(results) > 1 else f"{len(results)} face was found in the provided image"
-    print(msg)
-    for j, result in enumerate(results):
-        # print(f"{j}: {result.points}")
-        points = result.points
-        print(f"Face {j+1}:")
-        # searched_faces[j].show()
-        for i in range(len(points)):
-            name = points[i].payload['name']
-            score = points[i].score
-            print(f"Result #{i+1}: {name} was diagnosed with {score * 100} confidence")
-            print(f"This image score was {score}")
-            # Image.open(f"faces/{points[i].payload['image_url']}").show()
-            print("-" * 50)
-            print()
 
-print_results(nearest_results)
+        nearest_results = []
+        for img in img_to_search:
+            nearest = qd.get_top_x_similar_images(client, collection, top, img)
+            nearest_results.append(nearest)
+
+        st.markdown("## Results:")
+
+        def print_results(results):
+            msg = f"{len(results)} faces were found in the provided image" if len(results) > 1 else f"{len(results)} face was found in the provided image"
+            st.markdown(msg)
+
+            for j, result in enumerate(results):
+                points = result.points
+                st.markdown(f"Face {j+1}:")
+                st.image(searched_faces[j], width = 200)
+                for i in range(len(points)):
+                    name = points[i].payload['name']
+                    score = points[i].score
+                    st.markdown(f"Result #{i+1}: {name} was diagnosed with {score * 100} confidence")
+                    st.markdown(f"This image score was {score}")
+                    st.image(f"faces/{points[i].payload['file_name']}")
+                    st.markdown("-" * 50)
+
+
+        print_results(nearest_results)
