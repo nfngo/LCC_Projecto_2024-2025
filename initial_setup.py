@@ -22,7 +22,7 @@ qd.create_collection(client, collection, 768, models.Distance.COSINE)
 data = []
 
 current_directory = os.getcwd()
-extensions = (".jpg", ".jpeg")
+extensions = (".jpg", ".jpeg", ".webp")
 
 def get_images_data(path):
     data = []
