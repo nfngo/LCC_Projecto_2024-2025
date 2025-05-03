@@ -1,5 +1,5 @@
 
-FROM python:3.9-slim
+FROM python:3.11-alpine
 
 WORKDIR /code
 
@@ -11,4 +11,4 @@ COPY . .
 
 COPY assets .
 
-CMD [ "python", "qdrant_tut.py" ]
+CMD [ "python", "initial_setup.py" ]
