@@ -1,12 +1,12 @@
 from qdrant_client import QdrantClient
 import os
 import streamlit as st
+import torch
 
 import qdrant.utils as qd
 import models.models as mdl
 
-# Using containers
-# client = QdrantClient(host="qdrant", port=6333)
+torch.classes.__path__ = []  # Neutralizes the path inspection
 
 # Local dev
 client = QdrantClient(host="localhost", port=6333)
@@ -22,7 +22,7 @@ st.title("Facial Recognition System")
 st.markdown("Upload images with different faces and you'll get the most similar ones from our database.")
 
 uploaded_file = st.file_uploader(label = "Upload some image",
-                                 type=["jpg", "jpeg"])
+                                 type=["jpg", "jpeg", "webp"])
 
 # Search top X similar results
 top = st.radio(
