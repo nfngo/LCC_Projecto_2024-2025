@@ -33,8 +33,6 @@ def process_image(image: Image.Image,
                   save: bool = True,
                   ignore_size: bool = False):
     
-    # # Load an image
-    # image = Image.open(image_path)
     faces_list = []
     # Detect faces in the image
     faces = detector.detect_faces(np.array(image))
